@@ -1,32 +1,4 @@
-import os
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# 1. Define a minimal HTTP request handler
-class DummyServer(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"Bot is running alive!")
-
-    def log_message(self, format, *args):
-        return # Silence logging to keep your Render logs clean
-
-# 2. Function to start the server on Render's assigned port
-def run_dummy_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), DummyServer)
-    print(False, f"=== Dummy web server started on port {port} ===")
-    server.serve_forever()
-
-# 3. Start the server in a completely separate background thread
-threading.Thread(target=run_dummy_server, daemon=True).start()
-
-# ==========================================
-# YOUR ORIGINAL BOT CODE STARTS BELOW HERE
-# ==========================================
-# Example: from pyrogram import Client...
 from aiohttp import web
 from plugins import web_server
 import asyncio
