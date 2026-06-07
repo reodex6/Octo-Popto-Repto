@@ -1,4 +1,88 @@
+# ==========================================
+# 1. PYTHON 3.14 EVENT LOOP FIX
+# ==========================================
+import asyncio
+import sys
 
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+# ==========================================
+# 2. IMPORTS
+# ==========================================
+import os
+from aiohttp import web
+import pyromod.listen  # Ensures your conversation features work
+from pyrogram import Client, idle
+
+# ==========================================
+# 3. ENVIRONMENT CONFIGURATION
+# ==========================================
+API_ID = os.environ.get("API_ID")
+API_HASH = os.environ.get("API_HASH")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+# Fail early with a clear message if Render env variables aren't set
+if not all([API_ID, API_HASH, BOT_TOKEN]):
+    print("❌ CONFIGURATION ERROR:")
+    print("Make sure API_ID, API_HASH, and BOT_TOKEN are added in Render's Environment tab.")
+    sys.exit(1)
+
+# ==========================================
+# 4. PYROGRAM CLIENT SETUP
+# ==========================================
+# This automatically handles both single-file commands and plugins.
+# If your plugins folder is named something else (like 'modules' or 'handlers'),
+# just change "plugins" below to match that folder name.
+app = Client(
+    "octo_bot",
+    api_id=int(API_ID),
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN,
+    plugins=dict(root="plugins") 
+)
+
+# ==========================================
+# 5. DUMMY WEB SERVER FOR RENDER PORT BINDING
+# ==========================================
+async def handle(request):
+    return web.Response(text="Bot status: Online and Healthy")
+
+async def start_web_server():
+    # Render assigns an arbitrary port via the PORT variable. We must listen on it.
+    port = int(os.environ.get("PORT", 10000))
+    server = web.Application()
+    server.router.add_get('/', handle)
+    runner = web.AppRunner(server)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f" Web server binding active on port {port}")
+
+# ==========================================
+# 6. APPLICATION LIFE CYCLE
+# ==========================================
+async def main():
+    # 1. Bind to Render's port immediately to stop "Application exited early"
+    await start_web_server()
+    
+    # 2. Start the Pyrogram Telegram Client
+    print(" Starting Telegram Bot client...")
+    await app.start()
+    print(" Connection established successfully!")
+    
+    # 3. Idle to block the execution and keep the bot alive
+    await idle()
+    
+    # 4. Clean up connections on shutdown
+    print(" Stopping bot...")
+    await app.stop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+ 
 from aiohttp import web
 from plugins import web_server
 import asyncio
